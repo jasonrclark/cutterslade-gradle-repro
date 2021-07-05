@@ -1,8 +1,8 @@
 # Repro for apiHelper problem with ca.cutterslade.gradle:gradle-dependency-analyze:1.6.0
 
-This repro contains a minimal example of a problem I'm having with releases of gradle-dependency-analyze after 1.5.3.
+This repro contains a minimal example of a problem logged at https://github.com/gradle-dependency-analyze/gradle-dependency-analyze/issues/201
 
-We have a internal plugin where one of its tasks forces resolution of configurations during its processing. After updating to 1.6.0 I was seeing failures like the following on certain combinations of commands:
+We have an internal plugin where one of its tasks forces resolution of configurations during its processing. After updating to 1.6.0 with Gradle 6.9, I was seeing failures like the following on certain combinations of commands:
 
 ```
 > Task :analyzeClassesDependencies FAILED
@@ -14,15 +14,15 @@ Execution failed for task ':analyzeClassesDependencies'.
 > Cannot change dependencies of dependency configuration ':apiHelper' after it has been resolved.
 ```
 
-After some experimentation, I found that these two tasks pulled into this repo invoke the problem on >= 1.6.0 but don't on 1.5.3.
+After some experimentation, I found that two tasks (`forceConfigurationResolution` being our custom task), available in the [repro repo](https://github.com/jasonrclark/cutterslade-gradle-repro), will cause the error on >= 1.6.0 but don't on 1.5.3.
 
 ```
 ./gradlew forceConfigurationResolution analyzeClassesDependencies
 ```
 
-I suspect that this is an unintended side-effect in the recent gradle-dependency-analyze since it worked before, and I don't know why analyzing things would need to modify the dependency collections.
+I suspect that this is an unintended side-effect in the recent `gradle-dependency-analyze` since it worked before and I don't know why analyzing things would need to modify the dependency collections.
 
-Relevent section of the stack trace. Full trace in [this gist](https://gist.github.com/jasonrclark/77bad41315b35b6e3a4bf2ef760e9214)
+Relevant section of the stack trace which seems to be pointing toward https://github.com/gradle-dependency-analyze/gradle-dependency-analyze/blob/master/src/main/groovy/ca/cutterslade/gradle/analyze/ProjectDependencyResolver.groovy#L276-L280. (Full trace in [this gist](https://gist.github.com/jasonrclark/77bad41315b35b6e3a4bf2ef760e9214))
 
 ```
 Caused by: org.gradle.api.InvalidUserDataException: Cannot change dependencies of dependency configuration ':apiHelper' after it has been resolved.
