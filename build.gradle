@@ -1,0 +1,61 @@
+buildscript {
+  repositories {
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
+  }
+  dependencies {
+    // Works
+    //version = "1.5.3"
+
+    // Doesn't
+    version = "1.7.0"
+
+    classpath "ca.cutterslade.gradle:gradle-dependency-analyze:${version}"
+  }
+}
+
+repositories {
+  mavenCentral()
+}
+
+apply plugin: 'java-library'
+apply plugin: 'ca.cutterslade.analyze'
+
+dependencies {
+  api "com.google.guava:guava:30.1-jre"
+}
+
+analyzeClassesDependencies {
+  justWarn = true
+}
+
+analyzeTestClassesDependencies {
+  justWarn = true
+}
+
+// Minimal example from our internal plugins that force resolution early
+import org.gradle.api.artifacts.Configuration
+
+tasks.register("forceConfigurationResolution") {
+  doLast() {
+    tasks.forEach { Task task ->
+      task.metaPropertyValues.forEach { PropertyValue prop ->
+        def value
+        try {
+          value = prop.value
+        } catch (e) {
+          // Log the failure, then skip over it
+          project.logger.debug("Failed to resolve property ${prop.name} on ${task.name}", e)
+          return
+        }
+
+        // If this blows up, it should throw, not get swallowed up
+        if (value instanceof Configuration) {
+          // The return value is not important, just calling it will make some lazily initialized stuff happen
+          value.resolvedConfiguration
+        }
+      }
+    }
+  }
+}
